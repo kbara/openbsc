@@ -27,8 +27,14 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE)
 TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
+python-tests: $(BUILT_SOURCES)
+	(pushd .. && python contrib/test_vty.py && popd)
+	sleep 1
+	(pushd .. && python contrib/test_config.py && popd)
+
 check-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
+	$(MAKE) $(AM_MAKEFLAGS) python-tests
 
 installcheck-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \

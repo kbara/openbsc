@@ -1,57 +1,39 @@
 #!/usr/bin/env python
 
-"""
-Start the process and dump the documentation to the doc dir. This is
-copied from the BTS directory and a fix might need to be applied there
-too.
-"""
+"""Start the process and dump the documentation to the doc dir."""
 
-import socket, subprocess, time,os
+import socket, subprocess, time, os, sys
+import util, openbsc
 
+def dump_doc(name, port, filename):
+    vty = openbsc._VTYSocket(name, "127.0.0.1", port)
+    xml = vty.command("show online-help")
+    # Now write everything until the end to the file
+    out = open(filename, 'w')
+    out.write(xml)
+    out.close()
 
-def dump_doc(end, port, filename):
-	sck = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sck.setblocking(1)
-	sck.connect(("localhost", port))
-	sck.recv(4096)
-
-	# Now send the command
-	sck.send("show online-help\r")
-	xml = ""
-	while True:
-		data = sck.recv(4096)
-		xml = "%s%s" % (xml, data)
-		if data.endswith(end):
-			break
-
-	# Now write everything until the end to the file
-	out = open(filename, 'w')
-	out.write(xml[18:len(end)*-1])
-	out.close()
-
-
-apps = [
-	# The same could be done with an empty config file but this way
-	# the example files are properly tested.
-	(4242, "src/osmo-nitb/osmo-nitb", "doc/examples/osmo-nitb/nanobts/openbsc.cfg", "OpenBSC", "nitb"),
-	(4242, "src/osmo-bsc/osmo-bsc", "doc/examples/osmo-bsc/osmo-bsc.cfg", "OsmoBSC", "bsc"),
-	(4243, "src/osmo-bsc_mgcp/osmo-bsc_mgcp", "doc/examples/osmo-bsc_mgcp/mgcp.cfg", "OpenBSC MGCP", "mgcp"),
-	(4244, "src/osmo-bsc_nat/osmo-bsc_nat", "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg", "OsmoBSCNAT", "nat"), 
-	(4245, "src/gprs/osmo-sgsn", "doc/examples/osmo-sgsn/osmo-sgsn.cfg", "OsmoSGSN", "sgsn"), 
-	(4246, "src/gprs/osmo-gbproxy", "doc/examples/osmo-gbproxy/osmo-gbproxy.cfg", "OsmoGbProxy", "gbproxy"),
-]
 
 # Dump the config of all our apps
-for app in apps:
-	print "Starting app for %s" % app[4]
+def dump_configs():
+    for app in util.apps:
+        appname = app[3]
+        print "Starting app for %s" % appname
+        proc = None
+        cmd = [app[1], "-c", util.app_configs[appname][0]]
+        try:
+            proc = subprocess.Popen(cmd, stdin=None, stdout=None)
+        except OSError: # Probably a missing binary
+            print >> sys.stderr, "Skipping app %s" % appname
+        except IOError: # Generally a socket issue
+            print >> sys.stderr, "Couldn't connect to %s, skipping" % appname
+        else:
+            time.sleep(1)
+            try:
+                dump_doc(app[2], app[0], 'doc/%s_vty_reference.xml' % appname)
+            finally:
+                util.endProc(proc)
 
-	cmd = [app[1], "-c", app[2]]
-	proc = subprocess.Popen(cmd, stdin=None, stdout=None)
-	time.sleep(1)
-	try:
-		dump_doc('\r\n%s> ' % app[3], app[0], 'doc/%s_vty_reference.xml' % app[4])
-	finally:
-		# Clean-up
-		proc.kill()
-		proc.wait()
+if __name__ == '__main__':
+    dump_configs()
 
