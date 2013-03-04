@@ -20,8 +20,8 @@ import time
 import sys
 import tempfile
 
-import openbsc
-import util
+import obscvty
+import osmoutil
 
 # Return true iff all the tests for the given config pass
 def test_config(app_desc, config, tmpdir, verbose=True):
@@ -46,11 +46,11 @@ def test_config_atest(app_desc, config, run_test, verbose=True):
         if verbose:
             print "Verifying %s, test %s" % (' '.join(cmd), run_test.__name__)
 
-        proc = util.popenDN(cmd)
+        proc = osmoutil.popen_devnull(cmd)
         time.sleep(1)
         end = app_desc[2]
         port = app_desc[0]
-        vty = openbsc._VTYSocket(end, "127.0.0.1", port)
+        vty = obscvty.VTYInteract(end, "127.0.0.1", port)
         ret = run_test(vty)
 
     except IOError as se:
@@ -60,7 +60,7 @@ def test_config_atest(app_desc, config, run_test, verbose=True):
 
     finally:
         if proc:
-            util.endProc(proc)
+            osmoutil.end_proc(proc)
 
     return ret
 
@@ -83,13 +83,13 @@ def copy_config(dirname, config):
 
 
 def write_config(vty):
-    new_config = vty.enabledCommand("write")
+    new_config = vty.enabled_command("write")
     return new_config.split(' ')[-1]
 
 
 # The only purpose of this function is to verify a working vty
 def token_vty_command(vty):
-    vty.command("exit")
+    vty.command("help")
     return True
 
 
@@ -144,7 +144,7 @@ def check_configs_tested(basedir, app_configs):
             print >> sys.stderr, "Warning: %s is not being tested" % config
 
 
-def test_all_apps(apps=util.apps, app_configs=util.app_configs,
+def test_all_apps(apps=osmoutil.apps, app_configs=osmoutil.app_configs,
     tmpdir="writtenconfig", verbose=True, rmtmp=False):
     check_configs_tested("doc/examples/", app_configs)
     errors = 0
@@ -166,12 +166,12 @@ def test_all_apps(apps=util.apps, app_configs=util.app_configs,
 if __name__ == '__main__':
     args = sys.argv[1:]
     verbose = False
-    configs = util.app_configs
+    configs = osmoutil.app_configs
 
     if '-v' in args:
         verbose = True
     if '--e1' in args:
-        configs['nitb'].extend(util.nitb_e1_configs)     
+        configs['nitb'].extend(osmoutil.nitb_e1_configs)     
 
     sys.exit(test_all_apps(app_configs=configs, verbose=verbose))
 

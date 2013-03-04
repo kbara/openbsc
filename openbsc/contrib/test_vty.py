@@ -17,24 +17,19 @@
 import traceback
 import time
 
-import openbsc
-import util
-
-testProc = None
-testVty = None
+import obscvty
+import osmoutil
 
 def setup():
-    global testProc, testVty
     cmd = ["./src/osmo-nitb/osmo-nitb", "-c", "doc/examples/osmo-nitb/hsl/openbsc.cfg"]
-    testProc = util.popenDN(cmd)
+    test_proc = osmoutil.popen_devnull(cmd)
     time.sleep(1)
-    testVty = openbsc._VTYSocket("OpenBSC", "127.0.0.1", 4242)
+    test_vty = obscvty.VTYInteract("OpenBSC", "127.0.0.1", 4242)
+    return test_proc, test_vty
 
 
-def teardown():
-    global testProc, testVty
-    testVty = None
-    util.endProc(testProc)
+def teardown(proc):
+    osmoutil.end_proc(proc)
 
 
 def run_tests(tests):
@@ -42,17 +37,20 @@ def run_tests(tests):
     failed_tests = []
     exit_code = 0
 
+    test_proc = None
+    test_vty = None
+
     for test in tests:
         try:
-            setup()
-            test()
+            test_proc, test_vty = setup()
+            test(test_vty)
         except Exception as e:
             print traceback.format_exc()
             failed_tests.append(test)
         else:
             passed_tests.append(test)
         finally:
-            teardown()
+            teardown(test_proc)
 
     print "%s tests passed" % len(passed_tests)
     if failed_tests:
@@ -62,26 +60,27 @@ def run_tests(tests):
             print ft.__name__
     return exit_code
 
-def test_history():
+
+def test_history(vty):
     t1 = "show version"
-    testVty.command(t1)
+    vty.command(t1)
     test_str = "show history"
-    assert(testVty.wVerify(test_str, [t1]))
+    assert(vty.w_verify(test_str, [t1]))
 
 
-def test_unknown_command():
+def test_unknown_command(vty):
     test_str = "help show"
-    assert(testVty.verify(test_str, ['% Unknown command.']))
+    assert(vty.verify(test_str, ['% Unknown command.']))
 
 
-def test_terminal_length():
+def test_terminal_length(vty):
     test_str = "terminal length 20"
-    assert(testVty.verify(test_str, ['']))
+    assert(vty.verify(test_str, ['']))
 
 
-def test_fail():
+def test_fail(vty):
     test_str = "terminal length 20"
-    assert(testVty.verify(test_str, ["not really there"]))
+    assert(vty.verify(test_str, ["not really there"]))
 
 
 tests = [test_terminal_length, test_unknown_command, test_history]
