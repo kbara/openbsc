@@ -28,9 +28,9 @@ TESTSUITE = $(srcdir)/testsuite
 DISTCLEANFILES = atconfig
 
 python-tests: $(BUILT_SOURCES)
-	(pushd .. && python contrib/test_vty.py && popd)
+	(pushd $(top_srcdir) && osmotestvty.py)
 	sleep 1
-	(pushd .. && python contrib/test_config.py && popd)
+	(pushd $(top_srcdir) && osmotestconfig.py --e1nitb || osmotestconfig.py)
 
 check-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
